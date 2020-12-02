@@ -27,6 +27,7 @@ pub fn solve() -> crate::Result<()> {
 
     Ok(())
 }
+
 fn parse_input(s: &str) -> Vec<i64> {
     s.trim()
         .lines()
