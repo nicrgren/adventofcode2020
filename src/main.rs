@@ -21,7 +21,11 @@ fn main() -> Result<()> {
         Some(Ok(3)) => day03::solve()?,
         Some(Ok(n)) => println!("Day {} is not implemented yet.", n),
         Some(Err(err)) => println!("Invalid day argument: {}.", err),
-        None => println!("Day argument must be provided."),
+        None => {
+            day01::solve()?;
+            day02::solve()?;
+            day03::solve()?;
+        }
     }
 
     Ok(())
