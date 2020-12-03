@@ -119,6 +119,7 @@ fn solve_part2(input: &str) -> usize {
 /// * `input` - The input string
 /// * `x_step` - The steps to move on each line per iteration.
 /// * `y_step` - The number of lines to jump after each iteration.
+///
 fn solver(input: &str, x_step: usize, y_step: usize) -> usize {
     let mut tree_count = 0;
     let mut col_index = 0;
