@@ -22,8 +22,8 @@ use std::cmp::max;
 
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day01.txt")?;
-    println!("Day01 part1: {}", solve_part1(&input));
-    println!("Day01 part2: {}", solve_part2(&input));
+    println!("Day01 part1: {}", part1(&input));
+    println!("Day01 part2: {}", part2(&input));
 
     Ok(())
 }
@@ -37,7 +37,7 @@ fn parse_input(s: &str) -> Vec<i64> {
         .expect("Day01: parsing")
 }
 
-fn solve_part1(input: &str) -> i64 {
+fn part1(input: &str) -> i64 {
     let nums = parse_input(input);
     let (n1, n2) = nums
         .iter()
@@ -54,7 +54,7 @@ fn solve_part1(input: &str) -> i64 {
     n1 * n2
 }
 
-fn solve_part2(input: &str) -> i64 {
+fn part2(input: &str) -> i64 {
     let nums = parse_input(input);
     let (n1, n2, n3) = nums
         .iter()
@@ -80,8 +80,6 @@ fn solve_part2(input: &str) -> i64 {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-
     static EXAMPLE_INPUT: &str = r#"
 1721
 979
@@ -92,11 +90,23 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        assert_eq!(solve_part2(EXAMPLE_INPUT.trim()), 241861950);
+        assert_eq!(super::part2(EXAMPLE_INPUT.trim()), 241861950);
     }
 
     #[test]
     fn part1_example() {
-        assert_eq!(solve_part1(EXAMPLE_INPUT.trim()), 514579);
+        assert_eq!(super::part1(EXAMPLE_INPUT.trim()), 514579);
+    }
+
+    #[test]
+    fn part1() {
+        let input = crate::read_input("day01.txt").expect("input");
+        assert_eq!(super::part1(&input), 719796);
+    }
+
+    #[test]
+    fn part2() {
+        let input = crate::read_input("day01.txt").expect("input");
+        assert_eq!(super::part2(&input), 144554112);
     }
 }
