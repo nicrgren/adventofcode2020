@@ -127,21 +127,10 @@ impl FromStr for Seat {
 
         for c in s.chars() {
             match c {
-                // Take the upper half
-                'B' => {
-                    rows.start += rows.len() / 2;
-                }
-
-                // Take the lower half
-                'F' => {
-                    rows.end -= rows.len() / 2;
-                }
-                'R' => {
-                    cols.start += cols.len() / 2;
-                }
-                'L' => {
-                    cols.end -= cols.len() / 2;
-                }
+                'B' => rows.start += rows.len() / 2,
+                'F' => rows.end -= rows.len() / 2,
+                'R' => cols.start += cols.len() / 2,
+                'L' => cols.end -= cols.len() / 2,
                 c => return Err(format!("`{}`. Invalid char `{}`", s, c)),
             }
         }
