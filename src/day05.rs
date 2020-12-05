@@ -55,45 +55,104 @@
 //!
 //! As a sanity check, look through your list of boarding passes. What is the
 //! highest seat ID on a boarding pass?
+//!
+//!
+//!
+//! --- Part Two ---
+//!
+//! Ding! The "fasten seat belt" signs have turned on. Time to find your seat.
+//!
+//! It's a completely full flight, so your seat should be the only missing boarding
+//! pass in your list. However, there's a catch: some of the seats at the very front
+//! and back of the plane don't exist on this aircraft,
+//! so they'll be missing from your list as well.
+//!
+//! Your seat wasn't at the very front or back, though; the seats
+//! with IDs +1 and -1 from yours will be in your list.
+//!
+//! What is the ID of your seat?
+//!
+
+use std::str::FromStr;
 
 pub fn solve() -> crate::Result<()> {
+    let input = crate::read_input("day05.txt")?;
+    println!("Day05 part1: {}", part1(&input));
+    println!("Day05 part2: {}", part2(&input));
     Ok(())
 }
 
-struct Plane {
-    no_rows: usize,
-    no_cols: usize,
+fn part1(input: &str) -> usize {
+    input
+        .trim()
+        .lines()
+        .map(|s| Seat::from_str(s).expect("Invalid seat"))
+        .map(|seat| seat.id())
+        .max()
+        .expect("Could not find highest seat")
 }
 
-impl Default for Plane {
-    fn default() -> Self {
-        Self {
-            no_rows: 128,
-            no_cols: 8,
+fn part2(input: &str) -> usize {
+    let mut seats = input
+        .trim()
+        .lines()
+        .map(|s| Seat::from_str(s).expect("Invalid seat"))
+        .collect::<Vec<_>>();
+
+    seats.sort_by(|s1, s2| s1.id().cmp(&s2.id()).reverse());
+
+    // Iterate over all seats viewing 2 at each iter.
+    // 1: [a b] c d e
+    // 2: a [b c] d e
+    // 3: a b [c d] e
+    for slice in seats.windows(2) {
+        let s1 = &slice[0];
+        let s2 = &slice[1];
+
+        // If the right id is not one smaller than the prev.
+        // It must be the seat.
+        if s2.id() != s1.id() - 1 {
+            return s1.id() - 1;
         }
     }
+
+    panic!("Could not find the seat!");
 }
 
-impl Plane {
-    fn seat_from_str(&self, s: &str) -> Seat {
-        let mut row_max = self.no_rows;
+impl FromStr for Seat {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut row_max = 128;
         let mut row_min = 0;
-        let mut col_max = self.no_cols;
+        let mut col_max = 8;
         let mut col_min = 0;
 
         for c in s.chars() {
             match c {
-                'F' => row_min += row_max / 2,
-                'B' => {
-		    row_max += row_max / 2,
-		}
+                // Take the upper half
+                'B' => row_min += (row_max - row_min) / 2,
+
+                // Take the lower half
+                'F' => {
+                    row_max -= (row_max - row_min) / 2;
+                }
+                'R' => {
+                    col_min += (col_max - col_min) / 2;
+                }
                 'L' => {
-		    
-		}
-                'R' => {}
-                c => panic!(format!("Invalid char `{}`", c)),
+                    col_max -= (col_max - col_min) / 2;
+                }
+                c => return Err(format!("`{}`. Invalid char `{}`", s, c)),
             }
         }
+
+        assert_eq!(col_max - col_min, 1);
+        assert_eq!(row_max - row_min, 1);
+
+        Ok(Seat {
+            row: row_min,
+            col: col_min,
+        })
     }
 }
 
@@ -103,6 +162,56 @@ struct Seat {
 }
 impl Seat {
     fn id(&self) -> usize {
-        self.row + self.col * 8
+        self.row * 8 + self.col
+    }
+
+    fn from_id(id: usize) -> Self {
+        Self {
+            row: id / 8,
+            col: id % 8,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Seat;
+    #[test]
+    fn part1_example() {
+        let tests = vec![
+            ("FBFBBFFRLR", 44, 5, 357),
+            ("BFFFBBFRRR", 70, 7, 567),
+            ("FFFBBBFRRR", 14, 7, 119),
+            ("BBFFBBFRLL", 102, 4, 820),
+        ];
+
+        for (s, row, col, id) in tests {
+            let seat: Seat = s.parse().expect("Parsing seat");
+            assert_eq!(row, seat.row, "Invalid row for {}", s);
+            assert_eq!(col, seat.col, "Invalid col for {}", s);
+            assert_eq!(id, seat.id(), "Invalid id for {}", s);
+        }
+    }
+
+    #[test]
+    fn seat_from_id() {
+        let input = crate::read_input("day05.txt").expect("reading input");
+        input
+            .trim()
+            .lines()
+            .map(|s| s.parse::<Seat>().expect("Parsing seat"))
+            .for_each(|seat| assert_eq!(seat.id(), Seat::from_id(seat.id()).id()));
+    }
+
+    #[test]
+    fn part1() {
+        let input = crate::read_input("day05.txt").expect("reading input");
+        assert_eq!(801, super::part1(&input));
+    }
+
+    #[test]
+    fn part2() {
+        let input = crate::read_input("day05.txt").expect("reading input");
+        assert_eq!(597, super::part2(&input));
     }
 }
