@@ -119,33 +119,6 @@ fn part2(input: &str) -> usize {
     panic!("Could not find the seat!");
 }
 
-fn part2_fst(input: &str) -> usize {
-    let mut seats = input
-        .trim()
-        .lines()
-        .map(|s| Seat::from_str(s).expect("Invalid seat"))
-        .collect::<Vec<_>>();
-
-    seats.sort_by(|s1, s2| s1.id().cmp(&s2.id()).reverse());
-
-    // Iterate over all seats viewing 2 at each iter.
-    // 1: [a b] c d e
-    // 2: a [b c] d e
-    // 3: a b [c d] e
-    for slice in seats.windows(2) {
-        let s1 = &slice[0];
-        let s2 = &slice[1];
-
-        // If the right id is not one smaller than the prev.
-        // It must be the seat.
-        if s2.id() != s1.id() - 1 {
-            return s1.id() - 1;
-        }
-    }
-
-    panic!("Could not find the seat!");
-}
-
 impl FromStr for Seat {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
