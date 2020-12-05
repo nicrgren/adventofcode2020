@@ -122,36 +122,36 @@ fn part2(input: &str) -> usize {
 impl FromStr for Seat {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut row_max = 128;
-        let mut row_min = 0;
-        let mut col_max = 8;
-        let mut col_min = 0;
+        let mut rows = 0..128;
+        let mut cols = 0..8;
 
         for c in s.chars() {
             match c {
                 // Take the upper half
-                'B' => row_min += (row_max - row_min) / 2,
+                'B' => {
+                    rows.start += rows.len() / 2;
+                }
 
                 // Take the lower half
                 'F' => {
-                    row_max -= (row_max - row_min) / 2;
+                    rows.end -= rows.len() / 2;
                 }
                 'R' => {
-                    col_min += (col_max - col_min) / 2;
+                    cols.start += cols.len() / 2;
                 }
                 'L' => {
-                    col_max -= (col_max - col_min) / 2;
+                    cols.end -= cols.len() / 2;
                 }
                 c => return Err(format!("`{}`. Invalid char `{}`", s, c)),
             }
         }
 
-        assert_eq!(col_max - col_min, 1);
-        assert_eq!(row_max - row_min, 1);
+        assert_eq!(cols.len(), 1);
+        assert_eq!(rows.len(), 1);
 
         Ok(Seat {
-            row: row_min,
-            col: col_min,
+            row: rows.start,
+            col: cols.start,
         })
     }
 }
@@ -165,6 +165,7 @@ impl Seat {
         self.row * 8 + self.col
     }
 
+    #[cfg(test)]
     fn from_id(id: usize) -> Self {
         Self {
             row: id / 8,
