@@ -109,14 +109,25 @@
 //! For each group, count the number of questions to which everyone answered "yes".
 //! What is the sum of those counts?
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day06.txt")?;
-    println!("Day06 part1: {}", part1(&input));
+
+    match std::env::args().nth(2).as_deref() {
+        Some("1") => println!("Day06 part1: {}", part1(&input)),
+        Some("2") => println!("Day06 part2: {}", part2(&input)),
+
+        _ => {
+            println!("Day06 part1: {}", part1(&input));
+            println!("Day06 part2: {}", part2(&input));
+        }
+    };
+
     Ok(())
 }
 
+/// Count any occurence of a letter.
 fn part1(s: &str) -> usize {
     s.trim()
         .split("\n\n")
@@ -127,6 +138,28 @@ fn part1(s: &str) -> usize {
                 .filter(|c| c.is_alphabetic())
                 .collect::<HashSet<char>>();
             unique.len()
+        })
+        .sum()
+}
+
+/// Count only the letters that appears on each row
+/// per group.
+/// Prev wrong answer 3237
+fn part2(s: &str) -> usize {
+    s.trim()
+        .split("\n\n")
+        .map(|s| s.trim())
+        .map(|grp: &str| {
+            let mut yesses = HashMap::<char, usize>::new();
+            let mut no_lines = 0;
+            // let mut all_yes = all_questions.clone();
+            grp.lines().for_each(|line| {
+                no_lines += 1;
+                line.chars()
+                    .for_each(|c| *yesses.entry(c).or_default() += 1)
+            });
+
+            yesses.values().filter(|&n| *n == no_lines).count()
         })
         .sum()
 }
@@ -161,5 +194,35 @@ b
     fn part1() {
         let input = crate::read_input("day06.txt").expect("reading input");
         assert_eq!(6551, super::part1(&input));
+    }
+
+    #[test]
+    fn part2_example() {
+        let input = r#"
+abc
+
+a
+b
+c
+
+ab
+ac
+
+a
+a
+a
+a
+
+b
+"#
+        .trim();
+
+        assert_eq!(6, super::part2(input));
+    }
+
+    #[test]
+    fn part2() {
+        let input = crate::read_input("day06.txt").expect("reading input");
+        assert_eq!(3358, super::part2(&input));
     }
 }
