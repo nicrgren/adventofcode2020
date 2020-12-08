@@ -7,6 +7,7 @@ mod day04;
 mod day05;
 mod day06;
 mod day07;
+mod day08;
 
 pub type Error = Box<dyn std::error::Error + 'static>;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -27,6 +28,7 @@ fn main() -> Result<()> {
         day05::solve,
         day06::solve,
         day07::solve,
+        day08::solve,
     ];
 
     match std::env::args().nth(1).map(|s| s.parse::<usize>()) {
