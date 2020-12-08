@@ -44,49 +44,86 @@
 //!
 //! How many bag colors can eventually contain at least one shiny gold bag?
 //! (The list of rules is quite long; make sure you get all of it.)
-use std::collections::{HashMap, HashSet};
 
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day07.txt")?;
-    println!("Day07 part1: {}", part1(&input));
+    println!("Day07 part1: {}", part1::solve(&input));
+    println!("Day07 part2: {}", part2::solve(&input));
 
     Ok(())
 }
 
-fn part1<'a>(s: &'a str) -> usize {
-    let mut bags = HashMap::<&'a str, Bag<'a>>::new();
+mod part1 {
+    use std::collections::{HashMap, HashSet};
+    type Parents<'a> = Vec<&'a str>;
 
-    for (name, children) in s
-        .trim()
-        .lines()
-        .map(|line| parse_bag_line(line).expect("parsing bag line"))
-    {
-        bags.entry(name).or_insert_with(|| Bag::named(name));
+    pub fn solve<'a>(s: &'a str) -> usize {
+        let mut bags = HashMap::<&'a str, Parents<'a>>::new();
 
-        for child in children {
-            bags.entry(child.name)
-                .or_insert_with(|| Bag::named(child.name))
-                .parents
-                .push(name);
+        for (name, children) in s
+            .trim()
+            .lines()
+            .map(|line| super::parse_bag_line(line).expect("parsing bag line"))
+        {
+            for child in children {
+                bags.entry(child.name).or_default().push(name);
+            }
         }
+
+        let gold_bag_parents = bags.get("shiny gold").expect("que?! no shiny gold bag");
+
+        let mut contains_goldy: Vec<&'a str> = Vec::new();
+        rec_climber(&gold_bag_parents, &bags, &mut contains_goldy);
+
+        let unique_containers = contains_goldy.into_iter().collect::<HashSet<_>>();
+
+        unique_containers.len()
     }
 
-    let gold_bag = bags.get("shiny gold").expect("que?! no shiny gold bag");
-
-    let mut contains_goldy: Vec<&'a str> = Vec::new();
-    rec_diver(&gold_bag.parents, &bags, &mut contains_goldy);
-
-    let unique_containers = contains_goldy.into_iter().collect::<HashSet<_>>();
-
-    unique_containers.len()
+    /// Used to visit all parents for part1
+    fn rec_climber<'a>(
+        parents: &[&'a str],
+        bags: &HashMap<&'a str, Parents<'a>>,
+        res: &mut Vec<&'a str>,
+    ) {
+        for par_name in parents {
+            res.push(par_name);
+            if let Some(parents) = bags.get(par_name) {
+                rec_climber(&parents, &bags, res);
+            }
+        }
+    }
 }
 
-fn rec_diver<'a>(parents: &[&'a str], bags: &HashMap<&'a str, Bag<'a>>, res: &mut Vec<&'a str>) {
-    for par_name in parents {
-        res.push(par_name);
-        if let Some(parent) = bags.get(par_name) {
-            rec_diver(&parent.parents, &bags, res);
+mod part2 {
+
+    use std::collections::HashMap;
+
+    type Children<'a> = Vec<super::ChildBag<'a>>;
+    type Bags<'a> = HashMap<&'a str, Children<'a>>;
+
+    pub fn solve(s: &str) -> usize {
+        let mut bags = Bags::new();
+
+        for (name, children) in s
+            .trim()
+            .lines()
+            .map(|line| super::parse_bag_line(line).expect("parsing bag line"))
+        {
+            bags.insert(name, children.collect());
         }
+
+        count_children("shiny gold", &bags) - 1 // Subtract the shiny gold bag
+    }
+
+    fn count_children(bag: &'_ str, bags: &Bags<'_>) -> usize {
+        let mut res = 1; // count ourselves.
+        if let Some(children) = bags.get(bag) {
+            for child in children {
+                res += child.count * count_children(child.name, &bags);
+            }
+        }
+        res
     }
 }
 
@@ -116,29 +153,16 @@ fn parse_bag_line<'a>(s: &'a str) -> crate::Result<(&'a str, impl Iterator<Item 
             let (name, _) = rest.split_at(rest.find("bag").expect("finding `bag`"));
             ChildBag {
                 name: name.trim(),
-                _count: count,
+                count,
             }
         });
 
     Ok((name, contains))
 }
+
 #[derive(Debug)]
-struct Bag<'a> {
-    name: &'a str,
-    parents: Vec<&'a str>,
-}
-
-impl<'a> Bag<'a> {
-    fn named(name: &'a str) -> Self {
-        Self {
-            name,
-            parents: Vec::new(),
-        }
-    }
-}
-
 struct ChildBag<'a> {
-    _count: usize,
+    count: usize,
     name: &'a str,
 }
 
@@ -160,12 +184,48 @@ dotted black bags contain no other bags.
 "#
         .trim();
 
-        assert_eq!(4, super::part1(input));
+        assert_eq!(4, super::part1::solve(input));
     }
 
     #[test]
     fn part1() {
         let input = crate::read_input("day07.txt").expect("reading input");
-        assert_eq!(316, super::part1(&input));
+        assert_eq!(316, super::part1::solve(&input));
+    }
+
+    #[test]
+    fn part2_example1() {
+        let input = r#"
+shiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.
+faded blue bags contain 0 other bags.
+dotted black bags contain 0 other bags.
+vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
+dark olive bags contain 3 faded blue bags, 4 dotted black bags.
+"#
+        .trim();
+
+        assert_eq!(32, super::part2::solve(input));
+    }
+
+    #[test]
+    fn part2_example2() {
+        let input = r#"
+shiny gold bags contain 2 dark red bags.
+dark red bags contain 2 dark orange bags.
+dark orange bags contain 2 dark yellow bags.
+dark yellow bags contain 2 dark green bags.
+dark green bags contain 2 dark blue bags.
+dark blue bags contain 2 dark violet bags.
+dark violet bags contain no other bags.
+"#
+        .trim();
+
+        assert_eq!(126, super::part2::solve(input));
+    }
+
+    #[test]
+    fn part2() {
+        let input = crate::read_input("day07.txt").expect("reading input");
+        assert_eq!(11310, super::part2::solve(&input));
     }
 }
