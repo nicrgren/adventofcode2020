@@ -94,7 +94,7 @@
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day03.txt")?;
     println!("Day03 part1: {}", solve_part1(&input));
-    println!("Day03 part1: {}", solve_part2(&input));
+    println!("Day03 part2: {}", solve_part2(&input));
 
     Ok(())
 }
