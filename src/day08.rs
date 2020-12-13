@@ -119,7 +119,7 @@
 //! Fix the program so that it terminates normally by changing exactly one jmp
 //! (to nop) or nop (to jmp). What is the value of the accumulator after the program terminates?
 
-use std::{collections::HashSet, str::FromStr};
+use std::{collections::HashSet, iter::FromIterator, str::FromStr};
 
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day08.txt")?;
@@ -129,24 +129,28 @@ pub fn solve() -> crate::Result<()> {
 }
 
 fn part1(s: &str) -> i64 {
-    let instructions = s
+    let mut program = s
         .lines()
         .map(|line| line.parse::<Op>().expect("Parsing Op"))
-        .collect::<Vec<_>>();
+        .collect::<Program>();
 
-    let mut prog = Program {
-        acc: 0,
-        instructions,
-        visited: Default::default(),
-    };
-
-    prog.run()
+    program.run()
 }
 
 struct Program {
     acc: i64,
     instructions: Vec<Op>,
     visited: HashSet<usize>,
+}
+
+impl FromIterator<Op> for Program {
+    fn from_iter<T: IntoIterator<Item = Op>>(iter: T) -> Self {
+        Self {
+            acc: 0,
+            instructions: iter.into_iter().collect(),
+            visited: Default::default(),
+        }
+    }
 }
 
 impl Program {
