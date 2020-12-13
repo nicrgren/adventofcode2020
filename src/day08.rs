@@ -124,6 +124,7 @@ use std::{collections::HashSet, iter::FromIterator, str::FromStr};
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day08.txt")?;
     println!("Day08 part1: {}", part1(&input));
+    println!("Day08 part2: {}", part2(&input));
 
     Ok(())
 }
@@ -134,11 +135,44 @@ fn part1(s: &str) -> i64 {
         .map(|line| line.parse::<Op>().expect("Parsing Op"))
         .collect::<Program>();
 
-    program.run()
+    if let ProgramResult::Looped(n) = program.run() {
+        n
+    } else {
+        panic!("Part 1 did not loop")
+    }
+}
+
+fn part2(s: &str) -> i64 {
+    let mut program = s
+        .lines()
+        .map(|line| line.parse::<Op>().expect("Parsing Op"))
+        .collect::<Program>();
+
+    // Brute for this by simply trying to swap all Jmps and Nops until it exits :p
+
+    for i in 0..program.instructions.len() {
+        program.instructions.get_mut(i).unwrap().swap();
+
+        match program.run() {
+            ProgramResult::Terminated(n) => {
+                return n;
+            }
+            ProgramResult::OutOfBounds => {
+                println!("OUT OF BOUNDS");
+            }
+            _ => (),
+        }
+
+        program.reset();
+        program.instructions.get_mut(i).unwrap().swap();
+    }
+
+    panic!("Failed to find solution for part2")
 }
 
 struct Program {
     acc: i64,
+    ptr: i64,
     instructions: Vec<Op>,
     visited: HashSet<usize>,
 }
@@ -147,34 +181,50 @@ impl FromIterator<Op> for Program {
     fn from_iter<T: IntoIterator<Item = Op>>(iter: T) -> Self {
         Self {
             acc: 0,
+            ptr: 0,
             instructions: iter.into_iter().collect(),
             visited: Default::default(),
         }
     }
 }
 
-impl Program {
-    fn run(&mut self) -> i64 {
-        let mut ptr: i64 = 0;
+/// Used in Part2 to distinguish Program stop due to Re visit or proper exit.
+#[derive(Debug, Clone, Copy)]
+enum ProgramResult {
+    Looped(i64),
+    Terminated(i64),
+    OutOfBounds,
+}
 
+impl Program {
+    fn reset(&mut self) {
+        self.acc = 0;
+        self.ptr = 0;
+        self.visited.clear();
+    }
+    fn run(&mut self) -> ProgramResult {
         loop {
-            if !self.visited.insert(ptr as usize) {
-                return self.acc;
+            if !self.visited.insert(self.ptr as usize) {
+                return ProgramResult::Looped(self.acc);
+            } else if self.ptr as usize == self.instructions.len() {
+                return ProgramResult::Terminated(self.acc);
             }
 
-            match self.instructions.get(ptr as usize) {
+            match self.instructions.get(self.ptr as usize) {
                 Some(Op::Acc(count)) => {
                     self.acc += count;
-                    ptr += 1;
+                    self.ptr += 1;
                 }
 
                 Some(Op::Jmp(count)) => {
-                    ptr += *count;
+                    self.ptr += *count;
                 }
 
-                Some(Op::Nop(_)) => ptr += 1,
+                Some(Op::Nop(_)) => self.ptr += 1,
 
-                None => panic!("Could not find instruction {}", ptr),
+                // We've know that ptr is > intstructions.len() due to if case above.
+                // So this must mean that ptr is not in [0..instructions.len()]
+                None => return ProgramResult::OutOfBounds,
             }
         }
     }
@@ -185,6 +235,22 @@ enum Op {
     Acc(i64),
     Jmp(i64),
     Nop(i64),
+}
+impl Op {
+    fn swap(&mut self) -> bool {
+        match self {
+            Self::Acc(_) => false,
+            Self::Jmp(n) => {
+                *self = Self::Nop(*n);
+                true
+            }
+
+            Self::Nop(n) => {
+                *self = Self::Jmp(*n);
+                true
+            }
+        }
+    }
 }
 
 impl FromStr for Op {
@@ -230,5 +296,29 @@ acc +6
     fn part1() {
         let input = crate::read_input("day08.txt").expect("reading input");
         assert_eq!(1584, super::part1(&input));
+    }
+
+    #[test]
+    fn part2_example() {
+        let input = r#"
+nop +0 
+acc +1 
+jmp +4 
+acc +3 
+jmp -3 
+acc -99
+acc +1 
+jmp -4 
+acc +6 
+"#
+        .trim();
+
+        assert_eq!(8, super::part2(input))
+    }
+
+    #[test]
+    fn part2() {
+        let input = crate::read_input("day08.txt").expect("Reading input");
+        assert_eq!(920, super::part2(&input))
     }
 }
