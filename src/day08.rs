@@ -172,7 +172,7 @@ impl Program {
                     ptr += *count;
                 }
 
-                Some(Op::Nop) => ptr += 1,
+                Some(Op::Nop(_)) => ptr += 1,
 
                 None => panic!("Could not find instruction {}", ptr),
             }
@@ -184,7 +184,7 @@ impl Program {
 enum Op {
     Acc(i64),
     Jmp(i64),
-    Nop,
+    Nop(i64),
 }
 
 impl FromStr for Op {
@@ -199,7 +199,7 @@ impl FromStr for Op {
         match op_s.trim() {
             "acc" => Ok(Self::Acc(count)),
             "jmp" => Ok(Self::Jmp(count)),
-            "nop" => Ok(Self::Nop),
+            "nop" => Ok(Self::Nop(count)),
             s => Err(format!("Invalid Op `{}`", s)),
         }
     }
