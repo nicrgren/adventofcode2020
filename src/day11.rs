@@ -25,7 +25,7 @@ impl Board {
     fn from_str(s: &str) -> Self {
         let s = s.trim();
         Self {
-            width: s.find('\n').expect("Cant find first linefeed"),
+            width: s.find('\n').unwrap_or(s.len()),
             seats: s
                 .chars()
                 .filter(|c| *c != '\n')
@@ -43,39 +43,47 @@ impl Board {
     }
 
     fn tick(&mut self) -> bool {
+        let mut new_board = vec![Seat::Empty; self.seats.len()];
+        let mut changed = false;
         for col in 0..self.cols() {
             for row in 0..self.rows() {
-                match self.seat_at(col, row).expect("getting seat") {
-                    Seat::Empty if self.adjencently_occupied(col, row) == 0 => {
-                        self.seats[col + (row * self.width)] = Seat::Occupied;
+                let idx = col + (row * self.width);
+
+                match self.seat_at(Col(col), Row(row)).expect("getting seat") {
+                    Seat::Empty if self.adjecently_occupied(Col(col), Row(row)) == 0 => {
+                        changed = true;
+                        new_board[idx] = Seat::Occupied;
                     }
 
-                    Seat::Occupied if 4 < self.adjencently_occupied(col, row) => {
-                        self.seats[col + (row * self.width)] = Seat::Empty;
+                    Seat::Occupied if 4 <= self.adjecently_occupied(Col(col), Row(row)) => {
+                        changed = true;
+                        new_board[idx] = Seat::Empty;
                     }
 
-                    _ => (),
+                    seat => new_board[idx] = seat,
                 }
             }
         }
 
-        false
+        self.seats = new_board;
+        changed
     }
 
-    fn adjencently_occupied(&self, col: usize, row: usize) -> usize {
+    fn adjecently_occupied(&self, col: Col, row: Row) -> usize {
         let mut count = 0;
+
         // Above Left
-        if 0 < col && row < 0 && self.is_occupied_at(col - 1, row - 1) {
+        if 0 < col.0 && 0 < row.0 && self.is_occupied_at(col - 1, row - 1) {
             count += 1;
         }
 
         // Above
-        if 0 < row && self.is_occupied_at(col, row - 1) {
+        if 0 < row.0 && self.is_occupied_at(col, row - 1) {
             count += 1;
         }
 
         // Above Right
-        if 0 < row && self.is_occupied_at(col + 1, row - 1) {
+        if 0 < row.0 && self.is_occupied_at(col + 1, row - 1) {
             count += 1;
         }
 
@@ -94,26 +102,26 @@ impl Board {
         }
 
         // Below left
-        if 0 < col && self.is_occupied_at(col - 1, row + 1) {
+        if 0 < col.0 && self.is_occupied_at(col - 1, row + 1) {
             count += 1;
         }
         // To left of
-        if 0 < col && self.is_occupied_at(col - 1, row) {
+        if 0 < col.0 && self.is_occupied_at(col - 1, row) {
             count += 1;
         }
 
         count
     }
 
-    fn is_occupied_at(&self, col: usize, row: usize) -> bool {
+    fn is_occupied_at(&self, col: Col, row: Row) -> bool {
         self.seat_at(col, row)
             .filter(|seat| seat.is_occupied())
             .is_some()
     }
 
-    fn seat_at(&self, col: usize, row: usize) -> Option<Seat> {
-        if 0 <= col && col < self.cols() && 0 <= row && row < self.rows() {
-            self.seats.get(col + row * self.width).copied()
+    fn seat_at(&self, col: Col, row: Row) -> Option<Seat> {
+        if col.0 < self.cols() && row.0 < self.rows() {
+            self.seats.get(col.0 + row.0 * self.width).copied()
         } else {
             None
         }
@@ -125,17 +133,68 @@ impl Board {
 }
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for slice in self.seats.chunks(self.width) {
-            let row = slice.iter().map(Seat::to_char).collect::<String>();
-            f.write_str(&row)?;
-            f.write_str("\n")?;
-        }
+        let board = self
+            .seats
+            .chunks(self.width)
+            .map(|line| line.iter().map(Seat::to_char).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n");
 
-        Ok(())
+        write!(f, "{}", board)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
+struct Row(usize);
+
+impl fmt::Display for Row {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_fmt(format_args!("R{}", self.0))
+    }
+}
+
+impl std::ops::Sub<usize> for Row {
+    type Output = Self;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        Self(self.0 - rhs)
+    }
+}
+
+impl std::ops::Add<usize> for Row {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Col(usize);
+
+impl fmt::Display for Col {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_fmt(format_args!("R{}", self.0))
+    }
+}
+
+impl std::ops::Sub<usize> for Col {
+    type Output = Self;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        Self(self.0 - rhs)
+    }
+}
+
+impl std::ops::Add<usize> for Col {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Seat {
     Empty,
     Occupied,
@@ -169,26 +228,72 @@ impl Seat {
 mod tests {
 
     #[test]
-    fn board() {
-        let s = r#"
-L.LL.LL.LL
-LLLLLLL.LL
-L.L.L..L..
-LLLL.LL.LL
-L.LL.LL.LL
-L.LLLLL.LL
-..L.L.....
-LLLLLLLLLL
-L.LLLLLL.L
-L.LLLLL.LL
-"#;
+    fn test_adjecently() {
+        use super::{Board, Col, Row};
+        assert_eq!(
+            0,
+            Board::from_str(r#"LLL"#).adjecently_occupied(Col(1), Row(0))
+        );
+        assert_eq!(
+            1,
+            Board::from_str(r#"#LL"#).adjecently_occupied(Col(1), Row(0))
+        );
+        assert_eq!(
+            2,
+            Board::from_str(r#"#L#"#).adjecently_occupied(Col(1), Row(0))
+        );
+        assert_eq!(
+            2,
+            Board::from_str(
+                r#"
+#L#
+LLL
+"#
+            )
+            .adjecently_occupied(Col(1), Row(0))
+        );
+        assert_eq!(
+            3,
+            Board::from_str(
+                r#"
+#L#
+#LL
+"#
+            )
+            .adjecently_occupied(Col(1), Row(0))
+        );
+        assert_eq!(
+            4,
+            Board::from_str(
+                r#"
+#L#
+##L
+"#
+            )
+            .adjecently_occupied(Col(1), Row(0))
+        );
+        assert_eq!(
+            5,
+            Board::from_str(
+                r#"
+#L#
+###
+"#
+            )
+            .adjecently_occupied(Col(1), Row(0))
+        );
 
-        let board = super::Board::from_str(s);
-
-        assert_eq!(10, board.cols());
-        assert_eq!(10, board.rows());
-
-        assert_eq!(37, super::part1(s));
+        assert_eq!(
+            8,
+            Board::from_str(
+                r#"
+###
+#L#
+###
+"#
+            )
+            .adjecently_occupied(Col(1), Row(1))
+        );
     }
 
     #[test]
@@ -281,5 +386,7 @@ L.#.L..#..
             board.tick();
             assert_eq!(version, board.to_string(), "Version #{}", n);
         }
+
+        assert_eq!(37, board.no_occupied());
     }
 }
