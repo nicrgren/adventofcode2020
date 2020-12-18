@@ -2,7 +2,6 @@ use std::fmt;
 
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day11.txt")?;
-
     println!("Day11 part1: {}", part1(&input));
 
     Ok(())
