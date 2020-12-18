@@ -25,7 +25,7 @@ impl Board {
     fn from_str(s: &str) -> Self {
         let s = s.trim();
         Self {
-            width: s.find('\n').unwrap_or(s.len()),
+            width: s.find('\n').unwrap_or_else(|| s.len()),
             seats: s
                 .chars()
                 .filter(|c| *c != '\n')
