@@ -3,11 +3,22 @@ use std::str::FromStr;
 pub fn solve() -> crate::Result<()> {
     let input = crate::read_input("day12.txt")?;
     println!("Day12 part1: {}", part1(&input));
+    println!("Day12 part2: {}", part2(&input));
     Ok(())
 }
 
 fn part1(s: &str) -> usize {
     let mut ship = Ship::default();
+
+    for action in parse(s) {
+        ship.apply(action);
+    }
+
+    ship.distance_from_start()
+}
+
+fn part2(s: &str) -> usize {
+    let mut ship = WpShip::default();
 
     for action in parse(s) {
         ship.apply(action);
@@ -22,9 +33,77 @@ fn parse<'a>(s: &'a str) -> impl IntoIterator<Item = Action> + 'a {
         .map(|s| s.trim().parse::<Action>().expect("Parsing action"))
 }
 
+/// The Waypoint ship used in part 2.
+struct WpShip {
+    position: Point,
+
+    /// The Waypoint position is to be regarded as an offset.
+    /// It's always relative to the ship.
+    wp: Point,
+}
+
+impl Default for WpShip {
+    fn default() -> Self {
+        Self {
+            position: Point { x: 0, y: 0 },
+            wp: Point { x: 10, y: 1 },
+        }
+    }
+}
+
+impl WpShip {
+    fn apply(&mut self, action: Action) {
+        match action.op {
+            Op::MoveNorth => self.wp.y += action.n as i32,
+            Op::MoveEast => self.wp.x += action.n as i32,
+            Op::MoveSouth => self.wp.y -= action.n as i32,
+            Op::MoveWest => self.wp.x -= action.n as i32,
+            Op::RotateLeft => self.wp = self.wp.rotate(-(action.n as i32)),
+            Op::RotateRight => self.wp = self.wp.rotate(action.n as i32),
+            Op::Forward => {
+                let n = action.n as i32;
+                self.position.x += n * self.wp.x;
+                self.position.y += n * self.wp.y;
+            }
+        }
+    }
+
+    fn distance_from_start(&self) -> usize {
+        (self.position.x.abs() + self.position.y.abs()) as usize
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Point {
     x: i32,
     y: i32,
+}
+
+impl Point {
+    fn rotate(&mut self, deg: i32) -> Self {
+        let mut steps = (deg % 360) / 90;
+
+        if steps < 0 {
+            steps += 4;
+        }
+
+        match steps {
+            0 => *self,
+            1 => Point {
+                x: self.y,
+                y: -self.x,
+            },
+            2 => Point {
+                x: -self.x,
+                y: -self.y,
+            },
+            3 => Point {
+                x: -self.y,
+                y: self.x,
+            },
+            n => panic!("Cannot rotate `{}` (got `{}` deg)", n, deg),
+        }
+    }
 }
 
 struct Ship {
@@ -166,7 +245,7 @@ impl FromStr for Action {
 #[cfg(test)]
 mod tests {
 
-    use super::{Action, Direction, Op, Ship};
+    use super::{Action, Direction, Op, Point, Ship, WpShip};
 
     static INPUT: &str = r#"
 F10
@@ -254,5 +333,73 @@ F11
         assert_eq!(Direction::East, dir.rotate_left(360));
         assert_eq!(Direction::East, dir.rotate_left(720));
         assert_eq!(Direction::East, dir.rotate_left(1080));
+    }
+
+    #[test]
+    fn wp_ship() {
+        let mut ship = WpShip::default();
+
+        ship.apply(Action {
+            op: Op::Forward,
+            n: 10,
+        });
+        assert_eq!(Point { x: 100, y: 10 }, ship.position);
+        assert_eq!(Point { x: 10, y: 1 }, ship.wp);
+
+        ship.apply(Action {
+            op: Op::MoveNorth,
+            n: 3,
+        });
+        assert_eq!(Point { x: 100, y: 10 }, ship.position);
+        assert_eq!(Point { x: 10, y: 4 }, ship.wp);
+
+        ship.apply(Action {
+            op: Op::Forward,
+            n: 7,
+        });
+        assert_eq!(Point { x: 170, y: 38 }, ship.position);
+        assert_eq!(Point { x: 10, y: 4 }, ship.wp);
+
+        ship.apply(Action {
+            op: Op::RotateRight,
+            n: 90,
+        });
+        assert_eq!(Point { x: 170, y: 38 }, ship.position);
+        assert_eq!(Point { x: 4, y: -10 }, ship.wp);
+
+        ship.apply(Action {
+            op: Op::Forward,
+            n: 11,
+        });
+        assert_eq!(Point { x: 214, y: -72 }, ship.position);
+        assert_eq!(Point { x: 4, y: -10 }, ship.wp);
+
+        assert_eq!(214, ship.position.x);
+        assert_eq!(-72, ship.position.y);
+        assert_eq!(286, ship.distance_from_start());
+    }
+
+    #[test]
+    fn rotate_point() {
+        let mut p = Point { x: 10, y: 4 };
+
+        assert_eq!(p.rotate(90), Point { x: 4, y: -10 });
+        assert_eq!(p.rotate(180), Point { x: -10, y: -4 });
+        assert_eq!(p.rotate(270), Point { x: -4, y: 10 });
+
+        assert_eq!(p.rotate(180), p.rotate(90).rotate(90));
+        assert_eq!(p.rotate(270), p.rotate(90).rotate(90).rotate(90));
+    }
+
+    #[test]
+    fn part1() {
+        let input = crate::read_input("day12.txt").expect("reading input");
+        assert_eq!(1645, super::part1(&input));
+    }
+
+    #[test]
+    fn part2() {
+        let input = crate::read_input("day12.txt").expect("reading input");
+        assert_eq!(35292, super::part2(&input));
     }
 }
